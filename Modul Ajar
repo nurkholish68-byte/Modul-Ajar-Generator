@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembuat Modul Ajar Interaktif</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Library html2pdf untuk PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Memuat Font Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Background lebih cerah */
+        }
+        /* Style kustom untuk tombol aktif di sidebar */
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: left;
+            transition: all 0.2s;
+            color: #4b5563; /* Warna teks default abu-abu gelap */
+            font-weight: 500;
+        }
+        .sidebar-item:hover {
+            background-color: #e0e7ff; /* Hover ringan */
+        }
+        .sidebar-item.active {
+            background-color: #4f46e5; /* Warna Indigo 600 untuk aktif */
+            color: white;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+        }
+        .sidebar-item.active:hover {
+            background-color: #4338ca;
+        }
+        
+        /* Style untuk bullet/indikator langkah */
+        .step-indicator {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-item.active .step-indicator svg {
+            fill: white; /* Ikon bullet berwarna putih saat aktif */
+        }
+        .sidebar-item:not(.active) .step-indicator svg {
+            fill: #9ca3af; /* Ikon bullet berwarna abu-abu saat tidak aktif */
+        }
+        .sidebar-item:hover:not(.active) .step-indicator svg {
+            fill: #4f46e5; /* Ikon bullet berwarna indigo saat hover */
+        }
+
+
+        /* Styling untuk Rich Text Editor sederhana */
+        .rich-text-area {
+            min-height: 100px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: white;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .rich-text-area:focus {
+            border-color: #4f46e5; /* Indigo */
+            box-shadow: 0 0 0 2px #c7d2fe; /* Ring fokus ringan */
+        }
+
+        /* Styling untuk Floating Action Buttons (FAB) */
+        #fab-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 50;
+        }
+        .fab-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px;
+            border-radius: 9999px; /* Bulat */
+            font-weight: 600;
+            margin-top: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .fab-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Styling untuk tab pertemuan */
+        .pertemuan-tab.active-tab {
+            color: #4f46e5 !important;
+            border-color: #4f46e5 !important;
+        }
+        
+        /* Styling untuk loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Styling untuk spinner kecil */
+        .loader-sm {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header Aplikasi (Navigasi Atas) -->
+    <header class="bg-white shadow-lg p-4 sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-indigo-700 flex items-center tracking-tight">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-2 text-indigo-500" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.168.818.469 1.119l3.75 3.75a.75.75 0 101.06-1.06L13.5 12.375V6z" clip-rule="evenodd" /></svg>
+                MODUL AJAR CREATOR
+            </h1>
+            <div id="authStatus" class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">Memuat Pengguna...</div>
+        </div>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 lg:p-8">
+        
+        <!-- HEADER (KOP SURAT) - DIPINDAHKAN KE SINI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8 text-center border-b-4 border-indigo-500/50">
+            <p class="font-extrabold text-lg md:text-xl text-gray-800 tracking-wider m-0 leading-tight">YAYASAN PENDIDIKAN SOROAKO</p>
+            <p class="font-bold text-base md:text-lg text-indigo-700 m-0 leading-tight">SMA YPS Soroako</p>
+        </div>
+        <!-- AKHIR HEADER WEBSITE -->
+
+        <!-- Wrapper untuk Sidebar + Konten -->
+        <div class="flex flex-col lg:flex-row gap-8">
+            
+            <!-- Sidebar Navigasi -->
+            <aside class="w-full lg:w-72">
+                <div class="bg-gray-100 rounded-xl shadow-xl p-6 sticky top-24 border border-gray-200">
+                    <h3 class="text-lg font-bold mb-5 text-gray-800 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5.625 13.5l.375 2.25a.75.75 0 00.916.66c.71-.247 1.488-.435 2.307-.577a13.314 13.314 0 012.883 0 13.5 13.5 0 00-2.307-.577.75.75 0 00-.916.66l-.375 2.25m4.358-10.873a.75.75 0 00-.735-.745 5.503 5.503 0 00-3.32 1.343.75.75 0 00-.28 1.312c-.75.452-1.52.846-2.324 1.173a1.5 1.5 0 00-.78.736l-.376 2.25c-.295 1.764.717 3.497 2.368 4.29a21.464 21.464 0 003.32 1.343c1.465.378 2.946.545 4.417.498a.75.75 0 00.735-.745l.235-1.41a10.05 10.05 0 00.323-2.008.75.75 0 00-.317-.677c-1.22-.857-2.396-1.8-3.473-2.825a1.5 1.5 0 00-.756-1.574l-.376-2.25a.75.75 0 00-.735-.745zM12 22.5A10.5 10.5 0 112.25 12 10.5 10.5 0 0112 22.5z" /></svg>
+                        Langkah-Langkah
+                    </h3>
+                    <nav class="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 overflow-x-auto pb-2">
+                        
+                        <button class="sidebar-item active" data-step="informasi" onclick="window.showStep('informasi')">
+                            <span class="step-indicator">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><circle cx="12" cy="12" r="6"/></svg>
+                            </span>
+                            Informasi Umum
+                        </button>
+                        
+                        <button class="sidebar-item" data-step="desain" onclick="window.showStep('desain')">
+                            <span class="step-indicator">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><circle cx="12" cy="12" r="6"/></svg>
+                            </span>
+                            Desain Pembelajaran
+                        </button>
+                        
+                        <button class="sidebar-item" data-step="pengalaman" onclick="window.showStep('pengalaman')">
+                            <span class="step-indicator">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><circle cx="12" cy="12" r="6"/></svg>
+                            </span>
+                            Pengalaman Belajar
+                        </button>
+                        
+                        <button class="sidebar-item" data-step="asesmen" onclick="window.showStep('asesmen')">
+                            <span class="step-indicator">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><circle cx="12" cy="12" r="6"/></svg>
+                            </span>
+                            Asesmen & Refleksi
+                        </button>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- Area Form Konten -->
+            <section class="flex-grow">
+                <!-- Kontainer Tersembunyi untuk Output Dokumen (khusus untuk download) -->
+                <div id="downloadContent" class="hidden"></div>
+                
+                <!-- HEADER (KOP SURAT) TELAH DIPINDAHKAN KE ATAS -->
+
+                <form id="moduleForm" class="space-y-8">
+                    
+                    <!-- 1. INFORMASI UMUM -->
+                    <div id="step-informasi" class="module-step bg-white p-6 rounded-xl shadow-xl border-t-4 border-indigo-500">
+                        <h2 class="text-xl font-bold mb-6 text-indigo-600 border-b pb-2">Informasi Umum & Identifikasi</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="mataPelajaran" class="block text-sm font-medium text-gray-700">Mata Pelajaran</label>
+                                <input type="text" id="mataPelajaran" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Kimia">
+                            </div>
+                            <div>
+                                <label for="kelas" class="block text-sm font-medium text-gray-700">Kelas</label>
+                                <select id="kelas" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">Pilih Kelas</option>
+                                    <option value="X">X</option>
+                                    <option value="XI">XI</option>
+                                    <option value="XII">XII</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="semester" class="block text-sm font-medium text-gray-700">Semester</label>
+                                <select id="semester" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">Pilih Semester</option>
+                                    <option value="Ganjil">Ganjil</option>
+                                    <option value="Genap">Genap</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="jmlPertemuan" class="block text-sm font-medium text-gray-700">Jumlah Pertemuan</label>
+                                <input type="number" id="jmlPertemuan" min="1" max="10" value="1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" onchange="window.updatePertemuanTabs(this.value)">
+                            </div>
+                        </div>
+
+                        <div class="mt-6 border-t pt-4">
+                            <h3 class="text-base font-semibold text-gray-700 mb-3">Identifikasi - Profil Pembelajar SU-BI</h3>
+                            <div class="flex flex-wrap gap-4">
+                                <label class="inline-flex items-center p-2 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                                    <input type="checkbox" name="profil" value="Personal" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm font-medium">Personal</span>
+                                </label>
+                                <label class="inline-flex items-center p-2 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                                    <input type="checkbox" name="profil" value="Intelektual" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm font-medium">Intelektual</span>
+                                </label>
+                                <label class="inline-flex items-center p-2 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                                    <input type="checkbox" name="profil" value="Sosial" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm font-medium">Sosial</span>
+                                </label>
+                                <label class="inline-flex items-center p-2 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                                    <input type="checkbox" name="profil" value="Global" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm font-medium">Global</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. DESAIN PEMBELAJARAN -->
+                    <div id="step-desain" class="module-step bg-white p-6 rounded-xl shadow-xl border-t-4 border-indigo-500 hidden">
+                        <h2 class="text-xl font-bold mb-6 text-indigo-600 border-b pb-2">Desain Pembelajaran</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Capaian Pembelajaran</label>
+                                <div id="capaianPembelajaran" contenteditable="true" class="rich-text-area mt-1" placeholder="Masukkan Capaian Pembelajaran..."></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Tujuan Pembelajaran</label>
+                                <div id="tujuanPembelajaran" contenteditable="true" class="rich-text-area mt-1" placeholder="Masukkan Tujuan Pembelajaran..."></div>
+                            </div>
+                            <div>
+                                <label for="topik" class="block text-sm font-medium text-gray-700">Topik Pembelajaran</label>
+                                <input type="text" id="topik" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Reaksi Redoks">
+                            </div>
+                            
+                            <!-- Tombol Generate AI -->
+                            <div class="pt-4">
+                                <button id="btnGenerateRencana" type="button" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition disabled:opacity-50" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.168.818.469 1.119l3.75 3.75a.75.75 0 101.06-1.06L13.5 12.375V6z"/></svg>
+                                    Generate Rencana Pembelajaran AI (Semua Pertemuan)
+                                </button>
+                                <p id="aiHint" class="text-xs text-gray-500 mt-2 text-center">Isi Capaian, Tujuan, dan Topik untuk mengaktifkan AI.</p>
+                            </div>
+                            
+                            <div class="pt-4 border-t">
+                                <label for="digital" class="block text-sm font-medium text-gray-700">Pemanfaatan Digital</label>
+                                <input type="text" id="digital" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" placeholder="Contoh: Simulasi PhET, Video YouTube, Quizizz">
+                            </div>
+                        </div>
+
+                        <div class="mt-6 border-t pt-4">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-3">Sumber Belajar (Link/File)</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="materiAjarLink" class="block text-sm font-medium text-gray-700">Link Materi Ajar</label>
+                                    <input type="url" id="materiAjarLink" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" placeholder="https://drive.google.com/materi/ajar">
+                                </div>
+                                <div>
+                                    <label for="videoLink" class="block text-sm font-medium text-gray-700">Link Video/Audio</label>
+                                    <input type="url" id="videoLink" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500" placeholder="https://youtube.com/video-kimia">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. PENGALAMAN BELAJAR -->
+                    <div id="step-pengalaman" class="module-step bg-white p-6 rounded-xl shadow-xl border-t-4 border-indigo-500 hidden">
+                        <h2 class="text-xl font-bold mb-6 text-indigo-600 border-b pb-2">Pengalaman Belajar (Kegiatan Inti)</h2>
+                        <p class="text-sm text-gray-500 mb-4">Atur detail kegiatan untuk setiap pertemuan.</p>
+                        
+                        <!-- Tabs untuk Setiap Pertemuan -->
+                        <div id="pertemuanTabs" class="flex flex-wrap border-b border-gray-200 mb-6">
+                            <!-- Tabs akan di-generate oleh JS -->
+                        </div>
+
+                        <!-- Konten Pertemuan (D.1, D.2, dst) -->
+                        <div id="pertemuanContent">
+                            <!-- Konten pertemuan akan di-generate oleh JS -->
+                        </div>
+
+                    </div>
+
+                    <!-- 4. ASESMEN & REFLEKSI -->
+                    <div id="step-asesmen" class="module-step bg-white p-6 rounded-xl shadow-xl border-t-4 border-indigo-500 hidden">
+                        <h2 class="text-xl font-bold mb-6 text-indigo-600 border-b pb-2">Asesmen dan Refleksi</h2>
+
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">Asesmen Pembelajaran</h3>
+                        <div class="space-y-3 p-4 rounded-lg bg-indigo-50 border border-indigo-200">
+                            <p class="text-sm text-gray-700 font-medium">Buat link asesmen untuk modul ini:</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="px-4 py-2 bg-pink-600 text-white font-medium rounded-lg hover:bg-pink-700 transition duration-150 text-sm shadow-md">
+                                    Tes Diagnostik
+                                </button>
+                                <button type="button" class="px-4 py-2 bg-pink-600 text-white font-medium rounded-lg hover:bg-pink-700 transition duration-150 text-sm shadow-md">
+                                    Tes Formatif
+                                </button>
+                                <button type="button" class="px-4 py-2 bg-pink-600 text-white font-medium rounded-lg hover:bg-pink-700 transition duration-150 text-sm shadow-md">
+                                    Tes Sumatif
+                                </button>
+                            </div>
+                            <p class="text-xs italic text-gray-500 mt-2">Simulasi Link Asesmen: <input type="url" placeholder="Link Google Form/Quizizz/dll" class="p-2 border rounded-lg text-xs w-full focus:border-indigo-500"></p>
+                        </div>
+
+                        <h3 class="text-lg font-semibold text-gray-700 mt-6 mb-3 border-t pt-4">Refleksi dan Evaluasi</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Catatan Refleksi Guru</label>
+                                <div id="refleksiGuru" contenteditable="true" class="rich-text-area mt-1" placeholder="Catatan refleksi dan evaluasi proses pembelajaran..."></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Hasil Simpan -->
+                    <div id="outputContainer" class="bg-indigo-50 border border-indigo-400 text-indigo-700 px-4 py-3 rounded-xl relative hidden mb-20">
+                        <strong class="font-bold">Modul Tersimpan (Simulasi Firestore):</strong>
+                        <pre id="moduleOutput" class="whitespace-pre-wrap mt-2 text-xs"></pre>
+                    </div>
+
+                </form>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Floating Action Button (FAB) Container -->
+    <div id="fab-container">
+        <button id="btnSimpan" class="fab-button bg-indigo-600 text-white shadow-xl hover:bg-indigo-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7z" /><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM9 13a1 1 0 011-1h4a1 1 0 110 2h-4a1 1 0 01-1-1zm-2-2a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+            Simpan Modul
+        </button>
+        
+        <button id="btnDownloadDoc" class="fab-button bg-blue-500 text-white shadow-xl hover:bg-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" clip-rule="evenodd" /></svg>
+            Download DOCX
+        </button>
+        
+        <button id="btnDownloadPdf" class="fab-button bg-red-500 text-white shadow-xl hover:bg-red-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm4 4a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1zm3-1a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+            Download PDF
+        </button>
+    </div>
+
+    <!-- Modal Pesan -->
+    <div id="messageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-center transform transition-all duration-300 scale-100">
+            <p id="modalMessage" class="text-lg font-medium text-gray-800 mb-4">Pesan</p>
+            <div id="modalSpinner" class="hidden loader mx-auto mb-4"></div>
+            <button id="modalTutupBtn" onclick="window.closeModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md">Tutup</button>
+        </div>
+    </div>
+
+
+    <!-- Skrip Firebase & Aplikasi -->
+    <script type="module">
+        // Import Modul Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Konfigurasi dan Inisialisasi Firebase
+        setLogLevel('Debug');
+        
+        // Mengakses variabel global Canvas dengan aman
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
+        const API_KEY = ""; // Diperlukan untuk akses Gemini API
+
+        let db, auth, userId = null;
+        let activeModuleId = null; // ID Modul yang sedang di edit
+        let isGenerating = false; // State global untuk mencegah multiple generation
+
+        // Fungsi untuk menampilkan modal pesan (Dibuat global)
+        window.showModal = (message, showSpinner = false) => {
+            document.getElementById('modalMessage').innerHTML = message;
+            const spinner = document.getElementById('modalSpinner');
+            const tutupBtn = document.getElementById('modalTutupBtn');
+
+            if (showSpinner) {
+                spinner.classList.remove('hidden');
+                tutupBtn.classList.add('hidden');
+            } else {
+                spinner.classList.add('hidden');
+                tutupBtn.classList.remove('hidden');
+            }
+
+            document.getElementById('messageModal').classList.remove('hidden');
+            document.getElementById('messageModal').classList.add('flex');
+        };
+
+        // Fungsi untuk menutup modal pesan (Dibuat global)
+        window.closeModal = () => {
+            document.getElementById('messageModal').classList.add('hidden');
+            document.getElementById('messageModal').classList.remove('flex');
+        };
+        
+        // Inisialisasi Firebase dan Autentikasi
+        const initFirebase = async () => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Autentikasi
+                if (initialAuthToken) { 
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('authStatus').innerHTML = `<span class="font-medium text-indigo-600">Aktif</span> | ID: ${userId}`;
+                        setupDataListeners();
+                    } else {
+                        userId = crypto.randomUUID(); // Fallback untuk user anonim/non-auth
+                        document.getElementById('authStatus').innerHTML = `<span class="font-medium text-red-500">Anonim</span> | ID: ${userId.substring(0, 8)}...`;
+                    }
+                });
+
+            } catch (error) {
+                console.error("Gagal menginisialisasi Firebase:", error);
+                window.showModal("Gagal terhubung ke layanan data. Cek koneksi Anda.");
+            }
+        };
+
+        // Mengambil data modul ajar terakhir yang dibuat
+        const setupDataListeners = () => {
+            if (!db || !userId) return;
+
+            const modulesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/modules`);
+            // Mengambil 1 dokumen terbaru yang disimpan (simulasi)
+            const q = query(modulesCollectionRef, limit(1)); 
+
+            onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    console.log("Belum ada modul ajar tersimpan.");
+                    return;
+                }
+
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" || change.type === "modified") {
+                        const moduleData = change.doc.data();
+                        activeModuleId = change.doc.id;
+                        fillForm(moduleData);
+                        document.getElementById('outputContainer').classList.remove('hidden');
+                        document.getElementById('moduleOutput').textContent = JSON.stringify(moduleData, null, 2);
+                        window.showModal("✅ Modul Ajar Berhasil Dimuat dari Cloud.");
+                    }
+                });
+            }, (error) => {
+                console.error("Gagal mendengarkan data Firestore:", error);
+            });
+        };
+
+        // Mengisi Form dari data Firestore
+        const fillForm = (data) => {
+            const getEl = (id) => document.getElementById(id);
+
+            if (getEl('mataPelajaran')) getEl('mataPelajaran').value = data.informasi.mataPelajaran || '';
+            if (getEl('kelas')) getEl('kelas').value = data.informasi.kelas || '';
+            if (getEl('semester')) getEl('semester').value = data.informasi.semester || '';
+            
+            const jmlPertemuan = data.informasi.jmlPertemuan || 1;
+            if (getEl('jmlPertemuan')) getEl('jmlPertemuan').value = jmlPertemuan;
+            window.updatePertemuanTabs(jmlPertemuan); 
+
+            // Isi Desain
+            if (getEl('capaianPembelajaran')) getEl('capaianPembelajaran').innerHTML = data.desain.capaianPembelajaran || '';
+            if (getEl('tujuanPembelajaran')) getEl('tujuanPembelajaran').innerHTML = data.desain.tujuanPembelajaran || '';
+            if (getEl('topik')) getEl('topik').value = data.desain.topik || '';
+            if (getEl('digital')) getEl('digital').value = data.desain.pemanfaatanDigital || '';
+            if (getEl('materiAjarLink')) getEl('materiAjarLink').value = data.desain.sumberBelajar.materiAjarLink || '';
+            if (getEl('videoLink')) getEl('videoLink').value = data.desain.sumberBelajar.videoLink || '';
+
+            // Isi Pengalaman Belajar
+            const maxPertemuan = parseInt(getEl('jmlPertemuan').max, 10);
+            for (let i = 1; i <= Math.min(jmlPertemuan, maxPertemuan); i++) {
+                if (data.pengalaman && data.pengalaman[`pertemuan${i}`]) {
+                    const awalEl = getEl(`awal${i}`);
+                    const intiEl = getEl(`inti${i}`);
+                    const penutupEl = getEl(`penutup${i}`);
+                    
+                    if (awalEl) awalEl.innerHTML = data.pengalaman[`pertemuan${i}`].kegiatanAwal || '';
+                    if (intiEl) intiEl.innerHTML = data.pengalaman[`pertemuan${i}`].kegiatanInti || '';
+                    if (penutupEl) penutupEl.innerHTML = data.pengalaman[`pertemuan${i}`].kegiatanPenutup || '';
+                }
+            }
+
+            // Isi Refleksi
+            if (getEl('refleksiGuru')) getEl('refleksiGuru').innerHTML = data.refleksi.catatanRefleksiGuru || '';
+
+            // Isi Profil Pembelajar
+            document.querySelectorAll('input[name="profil"]').forEach(checkbox => {
+                checkbox.checked = data.informasi.profilPembelajar && data.informasi.profilPembelajar.includes(checkbox.value);
+            });
+
+            // Pastikan tab Pengalaman Belajar dibuka ke Pertemuan 1
+            if (jmlPertemuan > 0) {
+                window.showPertemuanTab(1); 
+            }
+            window.checkAICanRun();
+        };
+
+        // Mengumpulkan data dari Form (Digunakan juga oleh fungsi download)
+        const collectFormData = () => {
+            const getRichText = (id) => document.getElementById(id) ? document.getElementById(id).innerHTML : '';
+            const getInputValue = (id) => document.getElementById(id) ? document.getElementById(id).value : '';
+
+            const jmlPertemuan = parseInt(getInputValue('jmlPertemuan'), 10);
+            const pertemuanData = {};
+            const maxPertemuan = parseInt(document.getElementById('jmlPertemuan').max, 10);
+            for (let i = 1; i <= Math.min(jmlPertemuan, maxPertemuan); i++) { 
+                pertemuanData[`pertemuan${i}`] = {
+                    kegiatanAwal: getRichText(`awal${i}`),
+                    kegiatanInti: getRichText(`inti${i}`),
+                    kegiatanPenutup: getRichText(`penutup${i}`),
+                };
+            }
+
+            const profilPembelajar = Array.from(document.querySelectorAll('input[name="profil"]:checked')).map(cb => cb.value);
+            
+            const mataPelajaran = getInputValue('mataPelajaran') || 'Modul Ajar';
+
+            return {
+                fileName: mataPelajaran.replace(/\s/g, '_') + '_Digital',
+                mataPelajaran: mataPelajaran,
+                timestamp: serverTimestamp(),
+                informasi: {
+                    mataPelajaran: mataPelajaran,
+                    kelas: getInputValue('kelas'),
+                    semester: getInputValue('semester'),
+                    jmlPertemuan: jmlPertemuan,
+                    profilPembelajar: profilPembelajar,
+                },
+                desain: {
+                    capaianPembelajaran: getRichText('capaianPembelajaran'),
+                    tujuanPembelajaran: getRichText('tujuanPembelajaran'),
+                    topik: getInputValue('topik'),
+                    pemanfaatanDigital: getInputValue('digital'),
+                    sumberBelajar: {
+                        materiAjarLink: getInputValue('materiAjarLink'),
+                        videoLink: getInputValue('videoLink'),
+                    }
+                },
+                pengalaman: pertemuanData,
+                asesmen: {
+                    diagnostik: 'TODO: Link ke Tes Diagnostik',
+                    formatif: 'TODO: Link ke Tes Formatif',
+                    sumatif: 'TODO: Link ke Tes Sumatif',
+                },
+                refleksi: {
+                    catatanRefleksiGuru: getRichText('refleksiGuru'),
+                }
+            };
+        };
+
+        // Menyimpan data ke Firestore
+        const saveModule = async () => {
+            if (!db || !userId) {
+                window.showModal("Aplikasi belum terinisialisasi. Tunggu sebentar atau refresh.");
+                return;
+            }
+
+            const { fileName, mataPelajaran, ...dataToSave } = collectFormData();
+            
+            // Menggunakan ID statis untuk Modul Ajar terbaru per user
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/modules/modul_ajar_terbaru`);
+
+            try {
+                await setDoc(docRef, dataToSave);
+                window.showModal("✅ Modul Ajar berhasil disimpan ke Cloud!");
+                
+                document.getElementById('outputContainer').classList.remove('hidden');
+                document.getElementById('moduleOutput').textContent = JSON.stringify(dataToSave, null, 2);
+
+            } catch (e) {
+                console.error("Error saving document: ", e);
+                window.showModal(`❌ Gagal menyimpan modul: ${e.message}`);
+            }
+        };
+
+        // --- FUNGSI GENERASI DOKUMEN ---
+
+        // Fungsi utilitas untuk membuat daftar/tabel dari pasangan key/value
+        const createDetailTable = (data) => {
+            let html = '<table style="width:100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10pt;">';
+            const infoMap = {
+                'Mata Pelajaran': data.informasi.mataPelajaran,
+                'Kelas / Semester': `${data.informasi.kelas} / ${data.informasi.semester}`,
+                'Jumlah Pertemuan': data.informasi.jmlPertemuan,
+                'Profil Pembelajar': data.informasi.profilPembelajar.join(', '),
+                'Topik Pembelajaran': data.desain.topik,
+                'Pemanfaatan Digital': data.desain.pemanfaatanDigital
+            };
+
+            for (const key in infoMap) {
+                html += `
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 6px; width: 30%; font-weight: bold; background-color: #f0f4f8;">${key}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; width: 70%;">${infoMap[key] || '-'}</td>
+                    </tr>
+                `;
+            }
+            html += '</table>';
+            return html;
+        };
+        
+        // Fungsi untuk membuat header/kop surat
+        const createDocumentHeader = () => {
+            return `
+                <div style="text-align: center; margin-bottom: 25px; line-height: 1.2;">
+                    <p style="font-weight: bold; font-size: 16pt; margin: 0;">YAYASAN PENDIDIKAN SOROAKO</p>
+                    <p style="font-weight: bold; font-size: 14pt; margin: 0; color: #4f46e5;">SMA YPS Soroako</p>
+                    <hr style="border: 1px solid #000; margin-top: 10px; margin-bottom: 5px;">
+                </div>
+            `;
+        }
+
+        // Fungsi utama untuk mengumpulkan semua data menjadi HTML siap download
+        const generateDocumentHTML = () => {
+            const data = collectFormData();
+            let html = '';
+            
+            // 0. Header (Kop Surat)
+            html += createDocumentHeader();
+
+            // 1. Judul Utama
+            html += `<h1 style="text-align: center; margin-bottom: 20px; font-family: 'Inter', sans-serif; font-size: 20pt; color: #1e3a8a;">MODUL AJAR: ${data.mataPelajaran.toUpperCase()}</h1>`;
+            
+            // 2. Informasi Umum & Identifikasi (A & B)
+            html += `<h2 style="font-family: 'Inter', sans-serif; color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px; margin-top: 20px; font-size: 14pt;">Informasi Umum & Identifikasi</h2>`;
+            html += createDetailTable(data);
+            
+            // 3. Desain Pembelajaran (C)
+            html += `<h2 style="font-family: 'Inter', sans-serif; color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px; margin-top: 20px; font-size: 14pt;">Desain Pembelajaran</h2>`;
+            html += `<h3 style="margin-top: 15px; font-weight: bold; font-size: 11pt;">Capaian Pembelajaran:</h3><div style="margin-bottom: 10px; padding: 8px; border-left: 4px solid #a5b4fc; background-color: #f5f5ff; font-size: 10pt;">${data.desain.capaianPembelajaran}</div>`;
+            html += `<h3 style="margin-top: 15px; font-weight: bold; font-size: 11pt;">Tujuan Pembelajaran:</h3><div style="margin-bottom: 10px; padding: 8px; border-left: 4px solid #a5b4fc; background-color: #f5f5ff; font-size: 10pt;">${data.desain.tujuanPembelajaran}</div>`;
+            html += `<h3 style="margin-top: 15px; font-weight: bold; font-size: 11pt;">Sumber Belajar:</h3><p style="font-size: 10pt;">Materi Ajar: ${data.desain.sumberBelajar.materiAjarLink || '-'} <br> Video/Audio: ${data.desain.sumberBelajar.videoLink || '-'}</p>`;
+
+
+            // 4. Pengalaman Belajar (D)
+            html += `<h2 style="font-family: 'Inter', sans-serif; color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px; margin-top: 20px; font-size: 14pt;">Pengalaman Belajar</h2>`;
+
+            for (let i = 1; i <= data.informasi.jmlPertemuan; i++) {
+                const p = data.pengalaman[`pertemuan${i}`];
+                if (p) {
+                    html += `<h3 style="margin-top: 15px; background-color: #e0f2fe; padding: 10px; border-radius: 4px; font-weight: bold; font-size: 12pt; color: #1e40af;">PERTEMUAN KE-${i}</h3>`;
+                    
+                    html += `<p style="margin-top: 10px; font-weight: 600; font-size: 10pt;">Kegiatan Awal:</p><div style="margin-left: 15px; margin-bottom: 10px; font-size: 10pt;">${p.kegiatanAwal}</div>`;
+                    html += `<p style="margin-top: 10px; font-weight: 600; font-size: 10pt;">Kegiatan Inti (Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi):</p><div style="margin-left: 15px; margin-bottom: 10px; font-size: 10pt;">${p.kegiatanInti}</div>`;
+                    html += `<p style="margin-top: 10px; font-weight: 600; font-size: 10pt;">Kegiatan Penutup:</p><div style="margin-left: 15px; margin-bottom: 20px; font-size: 10pt;">${p.kegiatanPenutup}</div>`;
+                }
+            }
+
+            // 5. Asesmen & Refleksi (E & F)
+            html += `<h2 style="font-family: 'Inter', sans-serif; color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px; margin-top: 20px; font-size: 14pt;">Asesmen dan Refleksi</h2>`;
+            html += `<h3 style="margin-top: 15px; font-weight: bold; font-size: 11pt;">Asesmen Pembelajaran:</h3><p style="font-size: 10pt;">Link Asesmen (Simulasi): [Diagnostik, Formatif, Sumatif akan dihubungkan di sini]</p>`;
+            html += `<h3 style="margin-top: 15px; font-weight: bold; font-size: 11pt;">Catatan Refleksi Guru:</h3><div style="margin-bottom: 20px; padding: 8px; border-left: 4px solid #a5b4fc; background-color: #f5f5ff; font-size: 10pt;">${data.refleksi.catatanRefleksiGuru}</div>`;
+
+            return html;
+        };
+
+
+        // --- LOGIKA DOWNLOAD DOCX ---
+        const downloadDocx = () => {
+            const data = collectFormData();
+            const filename = `${data.fileName}.doc`;
+            
+            const content = generateDocumentHTML();
+            
+            const docHtml = `
+                <html xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>${data.mataPelajaran} - Modul Ajar</title>
+                    <style>
+                        /* Gaya khusus untuk tampilan Word */
+                        body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin: 1in; }
+                        h1, h2, h3, h4 { font-family: 'Arial', sans-serif; margin-top: 1em; margin-bottom: 0.5em; color: #1e3a8a;}
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+                        td, th { border: 1px solid #000; padding: 6px; }
+                        div { margin: 0; padding: 0;} /* Mengatasi masalah spasi div di Word */
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob([docHtml], { type: 'application/msword;charset=utf-8' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.showModal(`✅ File DOCX (${filename}) berhasil dibuat!`);
+        };
+
+
+        // --- LOGIKA DOWNLOAD PDF ---
+        const downloadPdf = () => {
+            const data = collectFormData();
+            const filename = `${data.fileName}.pdf`;
+
+            const downloadContentDiv = document.getElementById('downloadContent');
+            downloadContentDiv.innerHTML = generateDocumentHTML();
+            
+            window.showModal("⏳ Sedang memproses dokumen PDF, harap tunggu sebentar...", true);
+            
+            const options = {
+                margin: 10,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().from(downloadContentDiv).set(options).save().then(() => {
+                window.showModal(`✅ File PDF (${filename}) berhasil dibuat!`);
+                downloadContentDiv.innerHTML = ''; 
+            }).catch(error => {
+                console.error("Gagal membuat PDF:", error);
+                window.showModal("❌ Gagal membuat PDF. Coba lagi.");
+                downloadContentDiv.innerHTML = '';
+            });
+        };
+
+
+        // --- LOGIKA UI INTERAKTIF ---
+
+        // Fungsi untuk mengupdate tab pertemuan saat input jumlah pertemuan berubah
+        window.updatePertemuanTabs = (count) => {
+            const jml = parseInt(count, 10) || 1;
+            const max = parseInt(document.getElementById('jmlPertemuan').max, 10);
+            const validJml = Math.min(Math.max(1, jml), max); 
+
+            const tabsContainer = document.getElementById('pertemuanTabs');
+            const contentContainer = document.getElementById('pertemuanContent');
+            tabsContainer.innerHTML = '';
+            contentContainer.innerHTML = '';
+
+            for (let i = 1; i <= validJml; i++) {
+                // Buat Tab
+                const tabButton = document.createElement('button');
+                tabButton.textContent = `Pertemuan ${i}`;
+                tabButton.classList.add('pertemuan-tab', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-gray-600', 'hover:text-indigo-600', 'border-b-2', 'border-transparent', 'hover:border-indigo-500', 'transition', 'duration-150');
+                tabButton.setAttribute('data-pertemuan', i);
+                tabButton.onclick = () => window.showPertemuanTab(i);
+                tabsContainer.appendChild(tabButton);
+
+                // Buat Konten Tab
+                const tabContent = document.createElement('div');
+                tabContent.id = `content${i}`;
+                tabContent.classList.add('pertemuan-content', 'space-y-6', 'hidden');
+                tabContent.innerHTML = `
+                    <div class="p-4 border border-gray-200 rounded-lg bg-indigo-50/50">
+                        <h4 class="font-bold text-md text-indigo-700 mb-2">Kegiatan Awal</h4>
+                        <div id="awal${i}" contenteditable="true" class="rich-text-area" placeholder="Aktivitas awal: apersepsi, motivasi..."></div>
+                    </div>
+                    <div class="p-4 border border-gray-200 rounded-lg bg-indigo-50/50">
+                        <h4 class="font-bold text-md text-indigo-700 mb-2">Kegiatan Inti (Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi)</h4>
+                        
+                        <!-- TOMBOL GENERATE KEGIATAN INTI SPESIFIK -->
+                        <button type="button" onclick="window.generateKegiatanInti(${i}, this)" id="btnRefineInti${i}" class="btn-refine-inti inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition disabled:opacity-50 mb-3" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.168.818.469 1.119l3.75 3.75a.75.75 0 101.06-1.06L13.5 12.375V6z"/></svg>
+                            Generate Ulang Kegiatan Inti AI
+                        </button>
+                        
+                        <div id="inti${i}" contenteditable="true" class="rich-text-area" placeholder="Masukkan langkah-langkah pembelajaran inti dan sisipkan blok interaktif..."></div>
+                        <button type="button" class="mt-3 text-xs px-3 py-1 bg-yellow-400 rounded-full text-yellow-900 font-semibold hover:bg-yellow-500 transition shadow-sm">
+                            + Tambah Blok Interaktif (Kuis/Simulasi)
+                        </button>
+                    </div>
+                    <div class="p-4 border border-gray-200 rounded-lg bg-indigo-50/50">
+                        <h4 class="font-bold text-md text-indigo-700 mb-2">Kegiatan Penutup</h4>
+                        <div id="penutup${i}" contenteditable="true" class="rich-text-area" placeholder="Aktivitas penutup: kesimpulan, refleksi, tindak lanjut..."></div>
+                    </div>
+                `;
+                contentContainer.appendChild(tabContent);
+            }
+
+            // Tampilkan tab pertama secara default
+            if (validJml > 0) {
+                window.showPertemuanTab(1);
+            }
+            window.checkAICanRun(); // Cek status tombol AI setelah update tabs
+        };
+
+        // Fungsi untuk menampilkan konten tab pertemuan tertentu
+        window.showPertemuanTab = (index) => {
+            document.querySelectorAll('.pertemuan-tab').forEach(tab => {
+                tab.classList.remove('active-tab');
+                tab.classList.add('text-gray-600', 'border-transparent');
+            });
+            document.querySelectorAll('.pertemuan-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            const activeTab = document.querySelector(`.pertemuan-tab[data-pertemuan="${index}"]`);
+            const activeContent = document.getElementById(`content${index}`);
+
+            if (activeTab && activeContent) {
+                activeTab.classList.add('active-tab');
+                activeTab.classList.remove('text-gray-600', 'border-transparent');
+                activeContent.classList.remove('hidden');
+            }
+            window.checkAICanRun(); // Panggil cek AI untuk memastikan tombol refine aktif/nonaktif
+        };
+        
+        // Fungsi untuk berpindah antar langkah (Sidebar)
+        window.showStep = (stepId) => {
+            document.querySelectorAll('.module-step').forEach(step => {
+                step.classList.add('hidden');
+            });
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            document.getElementById(`step-${stepId}`).classList.remove('hidden');
+            document.querySelector(`.sidebar-item[data-step="${stepId}"]`).classList.add('active');
+            
+            window.checkAICanRun();
+        };
+
+        // --- LOGIKA GEMINI AI ---
+
+        // Fungsi untuk memeriksa apakah tombol AI bisa diaktifkan
+        window.checkAICanRun = () => {
+            const capaian = document.getElementById('capaianPembelajaran')?.textContent.trim();
+            const tujuan = document.getElementById('tujuanPembelajaran')?.textContent.trim();
+            const topik = document.getElementById('topik')?.value.trim();
+            
+            // Cek untuk tombol utama (Step 2)
+            const btnMain = document.getElementById('btnGenerateRencana');
+            const hint = document.getElementById('aiHint');
+
+            if (btnMain) {
+                if (capaian && tujuan && topik && !isGenerating) {
+                    btnMain.disabled = false;
+                    hint.textContent = "AI siap membuat rancangan pembelajaran.";
+                    hint.classList.remove('text-gray-500');
+                    hint.classList.add('text-green-600', 'font-semibold');
+                } else {
+                    btnMain.disabled = true;
+                    hint.textContent = "Isi Capaian, Tujuan, dan Topik untuk mengaktifkan AI.";
+                    hint.classList.remove('text-green-600', 'font-semibold');
+                    hint.classList.add('text-gray-500');
+                }
+            }
+            
+            // Cek untuk tombol refine (Step 3)
+            document.querySelectorAll('.btn-refine-inti').forEach(btn => {
+                if (capaian && tujuan && topik && !isGenerating) {
+                    btn.disabled = false;
+                } else {
+                    btn.disabled = true;
+                }
+            });
+        };
+
+        // Fungsi untuk memanggil Gemini API (Generate Rencana Pembelajaran Keseluruhan)
+        const generateRencanaPembelajaran = async () => {
+            const capaian = document.getElementById('capaianPembelajaran').innerHTML.trim().replace(/<\/?(div|p|br)>/g, ' ');
+            const tujuan = document.getElementById('tujuanPembelajaran').innerHTML.trim().replace(/<\/?(div|p|br)>/g, ' ');
+            const topik = document.getElementById('topik').value.trim();
+            const jmlPertemuan = document.getElementById('jmlPertemuan').value;
+            
+            if (!capaian || !tujuan || !topik) {
+                window.showModal("Mohon isi Capaian Pembelajaran, Tujuan Pembelajaran, dan Topik terlebih dahulu.");
+                return;
+            }
+
+            isGenerating = true;
+            window.checkAICanRun();
+            const btn = document.getElementById('btnGenerateRencana');
+            btn.innerHTML = `<div class="loader mr-2"></div> Sedang Membuat Rencana (${jmlPertemuan} Pertemuan)...`;
+            window.showModal("⏳ Gemini AI sedang merancang langkah-langkah pembelajaran...", true);
+
+            const systemPrompt = `Anda adalah asisten perancang modul ajar Kurikulum Merdeka. Tugas Anda adalah membuat langkah-langkah pembelajaran terperinci untuk Kegiatan Awal, Inti, dan Penutup. Kegiatan Inti harus mencakup 4 tahapan: Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi.
+
+            Instruksi Output: Berikan output dalam format JSON yang berisi array. Setiap objek dalam array merepresentasikan satu pertemuan. Jumlah objek harus sama dengan jumlah pertemuan yang diminta.
+            
+            Gunakan skema JSON berikut:
+            
+            [
+              {
+                "kegiatanAwal": "Langkah-langkah kegiatan awal, fokus pada apersepsi dan motivasi.",
+                "kegiatanInti": "Langkah-langkah kegiatan inti, urutkan dan berikan detail untuk setiap tahap (Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi).",
+                "kegiatanPenutup": "Langkah-langkah kegiatan penutup, fokus pada kesimpulan, refleksi, dan tindak lanjut."
+              }
+              // ... objek pertemuan selanjutnya
+            ]`;
+
+            const userQuery = `Buatkan rancangan kegiatan pembelajaran untuk topik mata pelajaran: ${topik} dengan Capaian Pembelajaran: "${capaian}" dan Tujuan Pembelajaran: "${tujuan}". Rancang untuk total ${jmlPertemuan} Pertemuan. Jawab dalam Bahasa Indonesia.`;
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "kegiatanAwal": { "type": "STRING", "description": "Langkah-langkah kegiatan awal (apersepsi, motivasi, dll) dalam format list HTML (<ul><li>...</li></ul>)." },
+                                "kegiatanInti": { "type": "STRING", "description": "Langkah-langkah kegiatan inti (Memahami, Eksplorasi, Aplikasi, Refleksi) dalam format list HTML (<ul><li>...</li></ul>)." },
+                                "kegiatanPenutup": { "type": "STRING", "description": "Langkah-langkah kegiatan penutup (kesimpulan, refleksi, tindak lanjut) dalam format list HTML (<ul><li>...</li></ul>)." }
+                            },
+                            "propertyOrdering": ["kegiatanAwal", "kegiatanInti", "kegiatanPenutup"]
+                        }
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.candidates && result.candidates.length > 0 && result.candidates[0].content?.parts[0]?.text) {
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(jsonText);
+                    
+                    if (Array.isArray(parsedJson) && parsedJson.length > 0) {
+                        applyGeneratedContent(parsedJson);
+                        window.showModal("✅ Rencana Pembelajaran berhasil di-generate dan diisikan!");
+                        window.showStep('pengalaman'); // Pindah ke langkah Pengalaman Belajar
+                    } else {
+                         window.showModal("❌ AI berhasil merespon, namun format JSON tidak valid. Coba lagi.");
+                    }
+                } else {
+                    console.error("Gemini API Error:", result);
+                    window.showModal(`❌ Gagal terhubung ke AI. Pesan: ${result.error?.message || 'Error tidak diketahui'}`);
+                }
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                window.showModal(`❌ Terjadi kesalahan saat memproses permintaan AI: ${error.message}`);
+            } finally {
+                isGenerating = false;
+                window.checkAICanRun();
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.168.818.469 1.119l3.75 3.75a.75.75 0 101.06-1.06L13.5 12.375V6z"/></svg> Generate Rencana Pembelajaran AI (Semua Pertemuan)`;
+            }
+        };
+        
+        // Menerapkan konten yang di-generate ke form Pengalaman Belajar
+        const applyGeneratedContent = (generatedData) => {
+            const currentJml = parseInt(document.getElementById('jmlPertemuan').value, 10);
+            const max = parseInt(document.getElementById('jmlPertemuan').max, 10);
+            
+            // Hanya ambil sejumlah data yang sesuai dengan Jml Pertemuan di form
+            const dataToApply = generatedData.slice(0, Math.min(currentJml, max));
+
+            dataToApply.forEach((pData, index) => {
+                const i = index + 1;
+                const awalEl = document.getElementById(`awal${i}`);
+                const intiEl = document.getElementById(`inti${i}`);
+                const penutupEl = document.getElementById(`penutup${i}`);
+
+                if (awalEl) awalEl.innerHTML = pData.kegiatanAwal;
+                if (intiEl) intiEl.innerHTML = pData.kegiatanInti;
+                if (penutupEl) penutupEl.innerHTML = pData.kegiatanPenutup;
+            });
+        };
+        
+        // Fungsi untuk memanggil Gemini API (Generate Kegiatan Inti Spesifik)
+        window.generateKegiatanInti = async (index, buttonEl) => {
+            const capaian = document.getElementById('capaianPembelajaran')?.textContent.trim();
+            const tujuan = document.getElementById('tujuanPembelajaran')?.textContent.trim();
+            const topik = document.getElementById('topik')?.value.trim();
+
+            if (!capaian || !tujuan || !topik) {
+                window.showModal("Mohon isi Capaian Pembelajaran, Tujuan Pembelajaran, dan Topik di Langkah 2 (Desain Pembelajaran) terlebih dahulu.");
+                return;
+            }
+            
+            // Mengambil konten yang sudah ada (sebagai konteks)
+            const awalContent = document.getElementById(`awal${index}`).innerHTML.trim().replace(/<\/?(div|p|br)>/g, ' ');
+            const penutupContent = document.getElementById(`penutup${index}`).innerHTML.trim().replace(/<\/?(div|p|br)>/g, ' ');
+            const intiEl = document.getElementById(`inti${index}`);
+            
+            isGenerating = true;
+            window.checkAICanRun(); // Nonaktifkan semua tombol AI
+            
+            const originalText = buttonEl.innerHTML;
+            buttonEl.innerHTML = `<div class="loader-sm mr-2"></div> Generating...`;
+            window.showModal(`⏳ Gemini AI sedang merancang ulang Kegiatan Inti Pertemuan ${index}...`, true);
+
+            const systemPrompt = `Anda adalah asisten perancang modul ajar Kurikulum Merdeka. Tugas Anda adalah membuat langkah-langkah pembelajaran terperinci HANYA untuk Kegiatan Inti. Kegiatan Inti harus mencakup 4 tahapan: Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi.
+
+            Instruksi Output: Berikan output HANYA dalam format string HTML yang berisi list (<ul><li>...</li></ul>) untuk Kegiatan Inti. JANGAN sertakan Kegiatan Awal atau Penutup. JANGAN gunakan format JSON. Pastikan menggunakan bahasa Indonesia.`;
+
+            const userQuery = `Buatkan langkah-langkah Kegiatan Inti (Memahami, Mengeksplorasi, Mengaplikasi, Merefleksi) untuk Pertemuan ke-${index} dari topik: ${topik}, dengan Capaian Pembelajaran: "${capaian}" dan Tujuan Pembelajaran: "${tujuan}".
+            
+            Catatan Tambahan untuk AI:
+            - Kegiatan Awal (Sudah Ada, Gunakan sebagai Konteks): ${awalContent.substring(0, 300)}...
+            - Kegiatan Penutup (Sudah Ada, Gunakan sebagai Konteks): ${penutupContent.substring(0, 300)}...
+            
+            Pastikan Kegiatan Inti yang dihasilkan selaras dengan konteks di atas. Berikan output dalam format list HTML (<ul><li>...</li></ul>) saja.`;
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.candidates && result.candidates.length > 0 && result.candidates[0].content?.parts[0]?.text) {
+                    const generatedText = result.candidates[0].content.parts[0].text;
+                    
+                    // Membersihkan teks dari markdown code block atau tag yang tidak perlu
+                    const cleanHtml = generatedText
+                        .replace(/```(html)?|```/g, '') 
+                        .trim(); 
+                    
+                    intiEl.innerHTML = cleanHtml;
+                    window.showModal(`✅ Kegiatan Inti Pertemuan ${index} berhasil di-generate ulang!`);
+                } else {
+                    console.error("Gemini API Error:", result);
+                    window.showModal(`❌ Gagal terhubung ke AI. Pesan: ${result.error?.message || 'Error tidak diketahui'}`);
+                }
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                window.showModal(`❌ Terjadi kesalahan saat memproses permintaan AI: ${error.message}`);
+            } finally {
+                isGenerating = false;
+                buttonEl.innerHTML = originalText;
+                window.checkAICanRun(); // Aktifkan kembali semua tombol
+            }
+        };
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('btnSimpan').addEventListener('click', saveModule);
+        document.getElementById('btnDownloadDoc').addEventListener('click', downloadDocx);
+        document.getElementById('btnDownloadPdf').addEventListener('click', downloadPdf);
+        document.getElementById('btnGenerateRencana').addEventListener('click', generateRencanaPembelajaran);
+
+        // Listener untuk mengaktifkan/menonaktifkan tombol AI
+        document.querySelectorAll('#capaianPembelajaran, #tujuanPembelajaran, #topik').forEach(el => {
+            el.addEventListener('input', window.checkAICanRun);
+        });
+
+        // Inisialisasi Aplikasi saat Window dimuat
+        window.onload = () => {
+            initFirebase();
+            const jmlInput = document.getElementById('jmlPertemuan');
+            if (jmlInput) {
+                window.updatePertemuanTabs(jmlInput.value);
+            }
+            window.checkAICanRun(); // Cek status awal tombol AI
+        };
+    </script>
+</body>
+</html>
+
